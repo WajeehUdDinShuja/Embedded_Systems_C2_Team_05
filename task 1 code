@@ -1,0 +1,92 @@
+// Embedded Systems Lab - Task 1
+// Traffic Light Control System
+
+// Arduino pin assignments
+const int greenLED = 4;
+const int yellowLED = 3;
+const int redLED = 2;
+
+// Timing in milliseconds
+const unsigned long greenTime = 10000;
+const unsigned long yellowTime = 5000;
+const unsigned long redTime = 10000;
+
+// Traffic light states
+enum LightState {
+  GREEN,
+  YELLOW,
+  RED
+};
+
+// Start with GREEN
+LightState currentState = GREEN;
+
+unsigned long stateStartTime = 0;
+
+// Update traffic lights
+void updateLights() {
+
+  digitalWrite(greenLED, LOW);
+  digitalWrite(yellowLED, LOW);
+  digitalWrite(redLED, LOW);
+
+  switch (currentState) {
+
+    case GREEN:
+      digitalWrite(greenLED, HIGH);
+      break;
+
+    case YELLOW:
+      digitalWrite(yellowLED, HIGH);
+      break;
+
+    case RED:
+      digitalWrite(redLED, HIGH);
+      break;
+  }
+}
+
+void setup() {
+
+  pinMode(greenLED, OUTPUT);
+  pinMode(yellowLED, OUTPUT);
+  pinMode(redLED, OUTPUT);
+
+  stateStartTime = millis();
+  updateLights();
+}
+
+void loop() {
+
+  unsigned long currentTime = millis();
+  unsigned long elapsed = currentTime - stateStartTime;
+
+  LightState previousState = currentState;
+
+  switch (currentState) {
+
+    case GREEN:
+      if (elapsed >= greenTime) {
+        currentState = YELLOW;
+      }
+      break;
+
+    case YELLOW:
+      if (elapsed >= yellowTime) {
+        currentState = RED;
+      }
+      break;
+
+    case RED:
+      if (elapsed >= redTime) {
+        currentState = GREEN;
+      }
+      break;
+  }
+
+  if (currentState != previousState) {
+
+    stateStartTime = currentTime;
+    updateLights();
+  }
+}
