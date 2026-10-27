@@ -1,0 +1,126 @@
+// Embedded Systems Lab - Task 2
+// Traffic Light Control System with Pedestrian Crossing
+
+// Arduino pin assignments (Updated to match your final Tinkercad circuit)
+const int greenLED = 4;
+const int yellowLED = 3;
+const int redLED = 2;
+const int pedButton = 7;
+const int pedRedLED = 6;
+const int pedGreenLED = 5;
+
+// Timing in milliseconds (1 time unit = 1000ms)
+const unsigned long greenTime = 10000;   // Min 10 time units for Car Green
+const unsigned long yellowTime = 5000;   // 5 time units for Car Yellow
+const unsigned long pedGreenTime = 8000; // Pedestrian crossing duration
+const unsigned long safetyTime = 2000;   // Safety clearance (All Red)
+
+// Traffic light states expanded for Task 2
+enum LightState {
+  GREEN,
+  YELLOW,
+  PED_GREEN_STATE,
+  SAFETY_RED
+};
+
+// Start with GREEN
+LightState currentState = GREEN;
+unsigned long stateStartTime = 0;
+
+// Global flag to catch button presses instantly at any point
+bool buttonPressed = false;
+
+// Update traffic lights (Expanded to handle all 5 LEDs safely)
+void updateLights() {
+  // Clear all car and pedestrian lights first to guarantee safety
+  digitalWrite(greenLED, LOW);
+  digitalWrite(yellowLED, LOW);
+  digitalWrite(redLED, LOW);
+  digitalWrite(pedGreenLED, LOW);
+  digitalWrite(pedRedLED, LOW);
+
+  switch (currentState) {
+    case GREEN:
+      digitalWrite(greenLED, HIGH);
+      digitalWrite(pedRedLED, HIGH);  // Pedestrians must stay Red
+      break;
+
+    case YELLOW:
+      digitalWrite(yellowLED, HIGH);
+      digitalWrite(pedRedLED, HIGH);  // Pedestrians must stay Red
+      break;
+
+    case PED_GREEN_STATE:
+      digitalWrite(redLED, HIGH);      // Cars are stopped
+      digitalWrite(pedGreenLED, HIGH); // Pedestrians can cross
+      break;
+
+    case SAFETY_RED:
+      digitalWrite(redLED, HIGH);     // Cars are stopped
+      digitalWrite(pedRedLED, HIGH);  // Pedestrians are stopped
+      break;
+  }
+}
+
+void setup() {
+  pinMode(greenLED, OUTPUT);
+  pinMode(yellowLED, OUTPUT);
+  pinMode(redLED, OUTPUT);
+  pinMode(pedGreenLED, OUTPUT);
+  pinMode(pedRedLED, OUTPUT);
+  
+  // Set up button with internal pull-up (LOW = pressed)
+  pinMode(pedButton, INPUT_PULLUP);
+
+  stateStartTime = millis();
+  updateLights();
+}
+
+void loop() {
+  // Continuously scan for button press so it's never missed
+  if (digitalRead(pedButton) == LOW) {
+    buttonPressed = true;
+  }
+
+  unsigned long currentTime = millis();
+  unsigned long elapsed = currentTime - stateStartTime;
+
+  LightState previousState = currentState;
+
+  switch (currentState) {
+    case GREEN:
+      // Transition ONLY if button was pressed AND min green time has elapsed
+      if (buttonPressed && (elapsed >= greenTime)) {
+        buttonPressed = false; // Clear the button flag
+        currentState = YELLOW;
+      }
+      break;
+
+    case YELLOW:
+      // Transition after exactly 5 time units
+      if (elapsed >= yellowTime) {
+        currentState = PED_GREEN_STATE;
+      }
+      break;
+
+    case PED_GREEN_STATE:
+      // Transition after the pedestrian crossing duration finishes
+      if (elapsed >= pedGreenTime) {
+        currentState = SAFETY_RED;
+      }
+      break;
+
+    case SAFETY_RED:
+      // Transition back to car green after a short safety clearance window
+      if (elapsed >= safetyTime) {
+        currentState = GREEN;
+      }
+      break;
+  }
+
+  // If a state change happened, reset timer and rewrite outputs
+  if (currentState != previousState) {
+    stateStartTime = currentTime;
+    updateLights();
+  }
+}
